@@ -2,6 +2,8 @@
 
 A containerized version of the popular ACME.sh SSL certificate management tool with integrated Dell iDRAC support for enterprise server environments.
 
+**Docker Hub**: [nicat23/idracadm7](https://hub.docker.com/repository/docker/nicat23/idracadm7)
+
 ## About
 
 This Docker image combines the power of [acme.sh](https://github.com/acmesh-official/acme.sh) - a pure Unix shell script implementing the ACME client protocol - with Dell iDRAC management capabilities. It's designed for enterprise environments where SSL certificates need to be automatically deployed to Dell servers via iDRAC.
@@ -30,7 +32,7 @@ This Docker image combines the power of [acme.sh](https://github.com/acmesh-offi
 ### Basic Certificate Issuance
 ```bash
 # Runs as apps user (UID/GID 1000) by default
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+docker run --rm -v "$(pwd)/certs:/acme.sh" \
   nicat23/idracadm7:v1 \
   --issue -d example.com --standalone
 ```
@@ -39,7 +41,7 @@ docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
 ```bash
 # Run with custom UID/GID to match your host user
 docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
+  -v "$(pwd)/certs:/acme.sh" \
   -e PUID=$(id -u) \
   -e PGID=$(id -g) \
   nicat23/idracadm7:v1 \
@@ -58,7 +60,7 @@ export DEPLOY_IDRAC_PASS="password"
 
 # Issue and automatically deploy certificate to iDRAC
 docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
+  -v "$(pwd)/certs:/acme.sh" \
   -e DEPLOY_IDRAC_HOST \
   -e DEPLOY_IDRAC_USER \
   -e DEPLOY_IDRAC_PASS \
@@ -72,7 +74,7 @@ Or deploy an existing certificate:
 ```bash
 # Deploy existing certificate using the idrac.sh hook
 docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
+  -v "$(pwd)/certs:/acme.sh" \
   -e DEPLOY_IDRAC_HOST="192.168.1.100" \
   -e DEPLOY_IDRAC_USER="root" \
   -e DEPLOY_IDRAC_PASS="password" \
@@ -82,7 +84,7 @@ docker run --rm \
 
 ### Manual iDRAC Certificate Deployment
 ```bash
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+docker run --rm -v "$(pwd)/certs:/acme.sh" \
   nicat23/idracadm7:v1 \
   racadm -r 192.168.1.100 -u root -p password sslcertupload -t 1 -f /acme.sh/example.com/fullchain.cer
 ```
@@ -90,7 +92,7 @@ docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
 ### Run as Daemon (with automatic renewals)
 ```bash
 docker run -d --name acme-daemon \
-  -v "$(pwd)/acme.sh:/acme.sh" \
+  -v "$(pwd)/certs:/acme.sh" \
   nicat23/idracadm7:v1 daemon
 ```
 
@@ -228,14 +230,14 @@ This container runs as a non-root user by default for improved security:
 
 **Default behavior (recommended):**
 ```bash
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+docker run --rm -v "$(pwd)/certs:/acme.sh" \
   nicat23/idracadm7:v1 --list
 ```
 
 **Match your host user ID:**
 ```bash
 docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
+  -v "$(pwd)/certs:/acme.sh" \
   -e PUID=$(id -u) \
   -e PGID=$(id -g) \
   nicat23/idracadm7:v1 --list
@@ -244,7 +246,7 @@ docker run --rm \
 **Run as root (when required for specific operations):**
 ```bash
 docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
+  -v "$(pwd)/certs:/acme.sh" \
   -e PUID=0 \
   -e PGID=0 \
   nicat23/idracadm7:v1 --list
@@ -324,7 +326,7 @@ services:
     image: nicat23/idracadm7:v1
     container_name: acme-daemon
     volumes:
-      - ./acme.sh:/acme.sh
+      - ./certs:/acme.sh
     environment:
       - PUID=1000
       - PGID=1000
