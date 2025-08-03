@@ -14,6 +14,7 @@ This Docker image combines the power of [acme.sh](https://github.com/acmesh-offi
 - **ACME.sh Author**: Neil Pang and contributors
 - **Dell iDRAC Integration**: This image includes Dell Server Administrator tools for iDRAC management
 - **iDRAC Deployment Hook Inspiration**: The included `idrac.sh` deploy hook was inspired by [societa-astronomica-g-v-schiaparelli/acme-idrac7](https://github.com/societa-astronomica-g-v-schiaparelli/acme-idrac7) and [kroy-the-rabbit/acme_idrac_deployment](https://github.com/kroy-the-rabbit/acme_idrac_deployment)
+- Project Docker Hub Repository: [https://hub.docker.com/repository/docker/nicat23/idracadm7/]
 
 ## Features
 
