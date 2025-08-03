@@ -22,12 +22,26 @@ This Docker image combines the power of [acme.sh](https://github.com/acmesh-offi
 - ✅ Automatic certificate renewal via cron
 - ✅ Custom deploy, DNS API, and notification scripts support
 - ✅ Based on Alpine Linux for minimal footprint
+- ✅ Runs as non-root user (UID/GID 1000) by default for improved security
+- ✅ Configurable user permissions via PUID/PGID environment variables
 
 ## Quick Start
 
 ### Basic Certificate Issuance
 ```bash
+# Runs as apps user (UID/GID 1000) by default
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 \
+  --issue -d example.com --standalone
+```
+
+### Custom User Permissions
+```bash
+# Run with custom UID/GID to match your host user
+docker run --rm \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  -e PUID=$(id -u) \
+  -e PGID=$(id -g) \
   nicat23/idracadm7:v1 \
   --issue -d example.com --standalone
 ```
@@ -124,6 +138,9 @@ docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
 |----------|---------|-------------|
 | `LE_CONFIG_HOME` | `/acme.sh` | ACME.sh configuration directory |
 | `AUTO_UPGRADE` | `1` | Enable automatic acme.sh upgrades |
+| `PUID` | `1000` | User ID for running the container process |
+| `PGID` | `1000` | Group ID for running the container process |
+| `USERNAME` | `apps` | Username for the container user |
 | `DEPLOY_IDRAC_HOST` | - | iDRAC IP address or hostname for deploy hook |
 | `DEPLOY_IDRAC_USER` | - | iDRAC username for deploy hook |
 | `DEPLOY_IDRAC_PASS` | - | iDRAC password for deploy hook |
@@ -199,11 +216,43 @@ DEPLOY_IDRAC_PASS='password'
 
 The acme.sh script automatically saves DNS provider credentials and deploy hook settings when you use them, creating persistent configuration that survives container restarts.
 
+## User Permissions & Security
+
+This container runs as a non-root user by default for improved security:
+
+- **Default User**: `apps` (UID/GID 1000)
+- **Configurable**: Use `PUID` and `PGID` environment variables to match your host user
+- **File Permissions**: The container automatically sets proper ownership of the `/acme.sh` volume
+
+### Permission Examples
+
+**Default behavior (recommended):**
+```bash
+docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 --list
+```
+
+**Match your host user ID:**
+```bash
+docker run --rm \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  -e PUID=$(id -u) \
+  -e PGID=$(id -g) \
+  nicat23/idracadm7:v1 --list
+```
+
+**Run as root (when required for specific operations):**
+```bash
+docker run --rm \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  -e PUID=0 \
+  -e PGID=0 \
+  nicat23/idracadm7:v1 --list
+```
+
 ## Custom Scripts
 
 This image supports custom deploy hooks, DNS API scripts, and notification hooks by copying them into the appropriate directories during the build:
-
-- **Deploy hooks**: Custom scripts in the `deploy/` directory (including the built-in `idrac.sh`)
 - **DNS API scripts**: Custom DNS provider scripts in the `dnsapi/` directory  
 - **Notification hooks**: Custom notification scripts in the `notify/` directory
 
@@ -277,6 +326,8 @@ services:
     volumes:
       - ./acme.sh:/acme.sh
     environment:
+      - PUID=1000
+      - PGID=1000
       - AUTO_UPGRADE=1
       # Add your DNS provider credentials here
       - CF_Token=your-cloudflare-token
@@ -286,8 +337,11 @@ services:
 
 ## Supported Platforms
 
-- `linux/amd64`
-- `linux/arm64` (if built for multi-arch)
+- `linux/amd64` (Linux environments)
+- `windows/amd64` (Windows with Docker Desktop)
+- `darwin/amd64` (macOS - untested)
+
+**Note**: ARM64 support is not available as Dell EMC Server Administrator tools only support x86_64 architecture.
 
 ## License
 
