@@ -2,11 +2,23 @@
 
 A containerized version of the popular ACME.sh SSL certificate management tool with integrated Dell iDRAC support for enterprise server environments.
 
-**Docker Hub**: [nicat23/idracadm7](https://hub.docker.com/repository/docker/nicat23/idracadm7)
-
 ## About
 
 This Docker image combines the power of [acme.sh](https://github.com/acmesh-official/acme.sh) - a pure Unix shell script implementing the ACME client protocol - with Dell iDRAC management capabilities. It's designed for enterprise environments where SSL certificates need to be automatically deployed to Dell servers via iDRAC.
+
+## Important Security Notice
+
+⚠️ **This container must run as root user** due to the Dell iDRAC tools installation and acme.sh integration requirements. The container is designed with root privileges for:
+- Dell Server Administrator tools (`racadm`) access
+- Certificate file system operations
+- Cron job management for automatic renewals
+
+**Security recommendations:**
+- Run this container only in trusted environments
+- Use Docker's security features (user namespaces, seccomp profiles, etc.) when possible
+- Limit network access to only required services
+- Monitor container activities through logging
+- Consider running in isolated networks or dedicated container hosts
 
 ## Credits
 
@@ -14,7 +26,6 @@ This Docker image combines the power of [acme.sh](https://github.com/acmesh-offi
 - **ACME.sh Author**: Neil Pang and contributors
 - **Dell iDRAC Integration**: This image includes Dell Server Administrator tools for iDRAC management
 - **iDRAC Deployment Hook Inspiration**: The included `idrac.sh` deploy hook was inspired by [societa-astronomica-g-v-schiaparelli/acme-idrac7](https://github.com/societa-astronomica-g-v-schiaparelli/acme-idrac7) and [kroy-the-rabbit/acme_idrac_deployment](https://github.com/kroy-the-rabbit/acme_idrac_deployment)
-- Project Docker Hub Repository: [https://hub.docker.com/repository/docker/nicat23/idracadm7/]
 
 ## Features
 
@@ -25,26 +36,13 @@ This Docker image combines the power of [acme.sh](https://github.com/acmesh-offi
 - ✅ Automatic certificate renewal via cron
 - ✅ Custom deploy, DNS API, and notification scripts support
 - ✅ Based on Alpine Linux for minimal footprint
-- ✅ Runs as non-root user (UID/GID 1000) by default for improved security
-- ✅ Configurable user permissions via PUID/PGID environment variables
+- ⚠️ Requires root privileges for full functionality
 
 ## Quick Start
 
 ### Basic Certificate Issuance
 ```bash
-# Runs as apps user (UID/GID 1000) by default
-docker run --rm -v "$(pwd)/certs:/acme.sh" \
-  nicat23/idracadm7:v1 \
-  --issue -d example.com --standalone
-```
-
-### Custom User Permissions
-```bash
-# Run with custom UID/GID to match your host user
-docker run --rm \
-  -v "$(pwd)/certs:/acme.sh" \
-  -e PUID=$(id -u) \
-  -e PGID=$(id -g) \
+docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
   nicat23/idracadm7:v1 \
   --issue -d example.com --standalone
 ```
@@ -61,7 +59,7 @@ export DEPLOY_IDRAC_PASS="password"
 
 # Issue and automatically deploy certificate to iDRAC
 docker run --rm \
-  -v "$(pwd)/certs:/acme.sh" \
+  -v "$(pwd)/acme.sh:/acme.sh" \
   -e DEPLOY_IDRAC_HOST \
   -e DEPLOY_IDRAC_USER \
   -e DEPLOY_IDRAC_PASS \
@@ -75,7 +73,7 @@ Or deploy an existing certificate:
 ```bash
 # Deploy existing certificate using the idrac.sh hook
 docker run --rm \
-  -v "$(pwd)/certs:/acme.sh" \
+  -v "$(pwd)/acme.sh:/acme.sh" \
   -e DEPLOY_IDRAC_HOST="192.168.1.100" \
   -e DEPLOY_IDRAC_USER="root" \
   -e DEPLOY_IDRAC_PASS="password" \
@@ -85,7 +83,7 @@ docker run --rm \
 
 ### Manual iDRAC Certificate Deployment
 ```bash
-docker run --rm -v "$(pwd)/certs:/acme.sh" \
+docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
   nicat23/idracadm7:v1 \
   racadm -r 192.168.1.100 -u root -p password sslcertupload -t 1 -f /acme.sh/example.com/fullchain.cer
 ```
@@ -93,7 +91,7 @@ docker run --rm -v "$(pwd)/certs:/acme.sh" \
 ### Run as Daemon (with automatic renewals)
 ```bash
 docker run -d --name acme-daemon \
-  -v "$(pwd)/certs:/acme.sh" \
+  -v "$(pwd)/acme.sh:/acme.sh" \
   nicat23/idracadm7:v1 daemon
 ```
 
@@ -135,15 +133,67 @@ docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
   racadm -r 192.168.1.100 -u root -p password sslcertupload -t 1 -f /acme.sh/example.com/fullchain.cer
 ```
 
+## Security Considerations
+
+Since this container runs with root privileges, consider implementing these security measures:
+
+### Docker Security Options
+```bash
+# Run with limited capabilities (remove if it breaks functionality)
+docker run --rm --cap-drop=ALL --cap-add=DAC_OVERRIDE --cap-add=SETUID --cap-add=SETGID \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 --list
+
+# Use read-only root filesystem where possible
+docker run --rm --read-only --tmpfs /tmp --tmpfs /var/tmp \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 --list
+
+# Limit network access
+docker run --rm --network none \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 --list
+```
+
+### Docker Compose with Security Features
+```yaml
+version: '3.8'
+services:
+  acme-sh:
+    image: nicat23/idracadm7:v1
+    container_name: acme-daemon
+    volumes:
+      - ./acme.sh:/acme.sh
+    environment:
+      - AUTO_UPGRADE=1
+      # Add your DNS provider credentials here
+      - CF_Token=your-cloudflare-token
+    command: daemon
+    restart: unless-stopped
+    # Security enhancements
+    security_opt:
+      - no-new-privileges:true
+    # Uncomment if your environment supports user namespaces
+    # userns_mode: "host"
+    # Limit memory and CPU
+    mem_limit: 256m
+    cpus: 0.5
+    # Use a custom network to isolate the container
+    networks:
+      - acme-network
+
+networks:
+  acme-network:
+    driver: bridge
+    internal: false  # Set to true if you don't need internet access after setup
+```
+
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LE_CONFIG_HOME` | `/acme.sh` | ACME.sh configuration directory |
 | `AUTO_UPGRADE` | `1` | Enable automatic acme.sh upgrades |
-| `PUID` | `1000` | User ID for running the container process |
-| `PGID` | `1000` | Group ID for running the container process |
-| `USERNAME` | `apps` | Username for the container user |
 | `DEPLOY_IDRAC_HOST` | - | iDRAC IP address or hostname for deploy hook |
 | `DEPLOY_IDRAC_USER` | - | iDRAC username for deploy hook |
 | `DEPLOY_IDRAC_PASS` | - | iDRAC password for deploy hook |
@@ -219,43 +269,11 @@ DEPLOY_IDRAC_PASS='password'
 
 The acme.sh script automatically saves DNS provider credentials and deploy hook settings when you use them, creating persistent configuration that survives container restarts.
 
-## User Permissions & Security
-
-This container runs as a non-root user by default for improved security:
-
-- **Default User**: `apps` (UID/GID 1000)
-- **Configurable**: Use `PUID` and `PGID` environment variables to match your host user
-- **File Permissions**: The container automatically sets proper ownership of the `/acme.sh` volume
-
-### Permission Examples
-
-**Default behavior (recommended):**
-```bash
-docker run --rm -v "$(pwd)/certs:/acme.sh" \
-  nicat23/idracadm7:v1 --list
-```
-
-**Match your host user ID:**
-```bash
-docker run --rm \
-  -v "$(pwd)/certs:/acme.sh" \
-  -e PUID=$(id -u) \
-  -e PGID=$(id -g) \
-  nicat23/idracadm7:v1 --list
-```
-
-**Run as root (when required for specific operations):**
-```bash
-docker run --rm \
-  -v "$(pwd)/certs:/acme.sh" \
-  -e PUID=0 \
-  -e PGID=0 \
-  nicat23/idracadm7:v1 --list
-```
-
 ## Custom Scripts
 
 This image supports custom deploy hooks, DNS API scripts, and notification hooks by copying them into the appropriate directories during the build:
+
+- **Deploy hooks**: Custom scripts in the `deploy/` directory (including the built-in `idrac.sh`)
 - **DNS API scripts**: Custom DNS provider scripts in the `dnsapi/` directory  
 - **Notification hooks**: Custom notification scripts in the `notify/` directory
 
@@ -327,10 +345,8 @@ services:
     image: nicat23/idracadm7:v1
     container_name: acme-daemon
     volumes:
-      - ./certs:/acme.sh
+      - ./acme.sh:/acme.sh
     environment:
-      - PUID=1000
-      - PGID=1000
       - AUTO_UPGRADE=1
       # Add your DNS provider credentials here
       - CF_Token=your-cloudflare-token
@@ -340,11 +356,30 @@ services:
 
 ## Supported Platforms
 
-- `linux/amd64` (Linux environments)
-- `windows/amd64` (Windows with Docker Desktop)
-- `darwin/amd64` (macOS - untested)
+- `linux/amd64`
+- `linux/arm64` (if built for multi-arch)
 
-**Note**: ARM64 support is not available as Dell EMC Server Administrator tools only support x86_64 architecture.
+## Troubleshooting
+
+### Permission Issues
+If you encounter permission issues:
+
+1. **Ensure the container runs as root** (default behavior - do not use `--user` flag)
+2. **Check volume permissions**: Make sure the host directory has appropriate permissions:
+   ```bash
+   mkdir -p ./acme.sh
+   chmod 755 ./acme.sh
+   ```
+3. **SELinux considerations**: If using SELinux, you may need to set appropriate labels:
+   ```bash
+   chcon -Rt svirt_sandbox_file_t ./acme.sh
+   ```
+
+### iDRAC Connection Issues
+- Verify network connectivity to iDRAC
+- Check iDRAC credentials and permissions
+- Ensure iDRAC firmware supports the certificate operations
+- Check if iDRAC web interface is accessible
 
 ## License
 

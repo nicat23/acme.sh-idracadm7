@@ -18,22 +18,12 @@ RUN apk --no-cache add -f \
   rpm \
   gcompat \
   libc6-compat \
-  libstdc++ \
-  su-exec
+  libstdc++
 
-# Create default user with UID/GID 1000
-RUN addgroup -g 1000 apps && \
-    adduser -D -u 1000 -G apps apps
-
-# User configuration
-ENV PUID=1000
-ENV PGID=1000
-ENV USERNAME=apps
-
-# ACME.sh configuration
 ENV LE_CONFIG_HOME=/acme.sh
 
 ARG AUTO_UPGRADE=1
+
 ENV AUTO_UPGRADE=$AUTO_UPGRADE
 
 # Install Dell iDRAC software using rpm
@@ -42,9 +32,10 @@ RUN rpm -ivh --nodeps --force \
   https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-hapi-11.0.0.0-5268.el9.x86_64.rpm \
   https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-idracadm7-11.0.0.0-5268.el9.x86_64.rpm 
 
-#Check for /usr/libssl.so - if not found check for alternatives and symlink
+  #Check for /usr/libssl.so - if not found check for alternatives and symlink
 RUN [ ! -e /usr/lib/libssl.so ] && { [ -e /usr/lib/libssl.so.3 ] && ln -s /usr/lib/libssl.so.3 /usr/lib/libssl.so || \ 
   { [ -e /usr/lib64/libssl.so.3 ] && ln -s /usr/lib64/libssl.so.3 /usr/lib/libssl.so; }; }
+
 
 #ln -s /usr/lib/libssl.so.3 /usr/lib/libssl.so || ln -s /usr/lib64/libssl.so.3 /usr/lib/libssl.so
 RUN ln -s /opt/dell/srvadmin/bin/idracadm7 /usr/bin/racadm
@@ -99,58 +90,13 @@ RUN for verb in help \
   ; done
 
 RUN printf "%b" '#!'"/usr/bin/env sh\n \
-# Set defaults\n \
-PUID=\${PUID:-1000}\n \
-PGID=\${PGID:-1000}\n \
-USERNAME=\${USERNAME:-apps}\n \
-\n \
-# Handle user ID changes\n \
-if [ \"\$PUID\" != \"0\" ] && [ \"\$PGID\" != \"0\" ]; then\n \
-    echo \"Setting user ID to \$PUID and group ID to \$PGID (username: \$USERNAME)\"\n \
-    \n \
-    # Get current user/group info\n \
-    CURRENT_USER=\$(getent passwd \"\$PUID\" | cut -d: -f1)\n \
-    CURRENT_GROUP=\$(getent group \"\$PGID\" | cut -d: -f1)\n \
-    \n \
-    # Create group if it doesn't exist or modify existing\n \
-    if [ -z \"\$CURRENT_GROUP\" ]; then\n \
-        addgroup -g \"\$PGID\" \"\$USERNAME\"\n \
-        GROUP_NAME=\"\$USERNAME\"\n \
-    else\n \
-        GROUP_NAME=\"\$CURRENT_GROUP\"\n \
-    fi\n \
-    \n \
-    # Create or modify user\n \
-    if [ -z \"\$CURRENT_USER\" ]; then\n \
-        adduser -D -u \"\$PUID\" -G \"\$GROUP_NAME\" \"\$USERNAME\"\n \
-        USER_NAME=\"\$USERNAME\"\n \
-    else\n \
-        USER_NAME=\"\$CURRENT_USER\"\n \
-    fi\n \
-    \n \
-    # Ensure acme.sh directories exist and set ownership\n \
-    mkdir -p /acme.sh\n \
-    chown -R \"\$PUID:\$PGID\" /acme.sh /root/.acme.sh\n \
-    \n \
-    # Execute as the specified user\n \
-    if [ \"\$1\" = \"daemon\" ]; then\n \
-        exec su-exec \"\$PUID:\$PGID\" crond -n -s -m off\n \
-    elif [ \"\$1\" = \"racadm\" ]; then\n \
-        shift\n \
-        exec su-exec \"\$PUID:\$PGID\" racadm \"\$@\"\n \
-    else\n \
-        exec su-exec \"\$PUID:\$PGID\" \"\$@\"\n \
-    fi\n \
-else\n \
-    # Run as root when PUID/PGID is 0\n \
-    if [ \"\$1\" = \"daemon\" ]; then\n \
-        exec crond -n -s -m off\n \
-    elif [ \"\$1\" = \"racadm\" ]; then\n \
-        shift\n \
-        exec racadm \"\$@\"\n \
-    else\n \
-        exec -- \"\$@\"\n \
-    fi\n \
+if [ \"\$1\" = \"daemon\" ];  then \n \
+ exec crond -n -s -m off \n \
+elif [ \"\$1\" = \"racadm\" ]; then \n \
+ shift \n \
+ exec racadm \"\$@\" \n \
+else \n \
+ exec -- \"\$@\"\n \
 fi\n" >/entry.sh && chmod +x /entry.sh
 
 VOLUME /acme.sh
