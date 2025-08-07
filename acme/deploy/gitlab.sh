@@ -1,1 +1,0 @@
-/defaults/acme.sh/deploy/gitlab.sh

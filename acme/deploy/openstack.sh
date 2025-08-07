@@ -1,1 +1,0 @@
-/defaults/acme.sh/deploy/openstack.sh

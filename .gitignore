@@ -1,5 +1,6 @@
 certs/
 config/
+ignore/
 # Local test overrides
 test/env.local.sh
 

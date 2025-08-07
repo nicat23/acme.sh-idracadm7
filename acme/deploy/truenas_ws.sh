@@ -1,1 +1,0 @@
-/defaults/acme.sh/deploy/truenas_ws.sh

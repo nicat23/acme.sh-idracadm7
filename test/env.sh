@@ -5,6 +5,7 @@ echo "✅ Sourcing test/env.sh"
 
 export DRYRUN=true
 export DBG=true
+export TEST_MODE=true  # Enable test compatibility mode
 
 export LE_BASE="/tmp/test/acme"
 export LE_WORKING_DIR="/tmp/test/defaults"
