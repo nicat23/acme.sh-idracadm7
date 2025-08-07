@@ -1,1 +1,0 @@
-/defaults/dnsapi/dns_he_ddns.sh

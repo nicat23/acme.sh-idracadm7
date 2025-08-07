@@ -1,1 +1,0 @@
-/defaults/notify/postmark.sh

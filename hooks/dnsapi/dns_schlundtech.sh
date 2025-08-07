@@ -1,1 +1,0 @@
-/defaults/dnsapi/dns_schlundtech.sh

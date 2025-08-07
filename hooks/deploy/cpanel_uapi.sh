@@ -1,1 +1,0 @@
-/defaults/deploy/cpanel_uapi.sh

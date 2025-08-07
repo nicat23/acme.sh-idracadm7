@@ -1,1 +1,0 @@
-/defaults/dnsapi/dns_ipv64.sh

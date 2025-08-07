@@ -1,1 +1,0 @@
-/defaults/deploy/ali_cdn.sh

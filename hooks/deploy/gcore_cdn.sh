@@ -1,1 +1,0 @@
-/defaults/deploy/gcore_cdn.sh

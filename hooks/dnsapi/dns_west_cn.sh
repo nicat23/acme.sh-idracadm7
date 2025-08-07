@@ -1,1 +1,0 @@
-/defaults/dnsapi/dns_west_cn.sh

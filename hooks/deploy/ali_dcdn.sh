@@ -1,1 +1,0 @@
-/defaults/deploy/ali_dcdn.sh

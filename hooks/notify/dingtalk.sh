@@ -1,1 +1,0 @@
-/defaults/notify/dingtalk.sh

@@ -1,1 +1,0 @@
-/defaults/deploy/ruckus.sh
