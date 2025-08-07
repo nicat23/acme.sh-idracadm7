@@ -36,9 +36,56 @@ RUN mkdir -p /certs /config \
     && mkdir -p /init.d /defaults
 
 # Copy init scripts and defaults
-COPY ./init.d/ /init.d/
-COPY ./defaults/ /defaults/
+
+COPY init.d/ /init.d/
 RUN chmod +x /init.d/*.sh
+
+# Copy main script
+COPY defaults/acme.sh /defaults/acme.sh
+
+# Copy integration directories
+COPY defaults/deploy/   /defaults/deploy/
+COPY defaults/dnsapi/   /defaults/dnsapi/
+COPY defaults/notify/   /defaults/notify/
+
+# Verify contents (optional but recommended)
+RUN echo "📦 Verifying /defaults contents:" && ls -lR /defaults
+RUN set -eux; \
+  echo "🚀 Installing acme.sh from /defaults/acme.sh into /acme..."; \
+  chmod +x /defaults/acme.sh; \
+  cd /defaults; \
+  if [ "${ACME_DRY_RUN:-false}" = "true" ]; then \
+    echo "🧪 Dry-run mode: skipping acme.sh install"; \
+  else \
+    mkdir -p /acme; \
+    if [ "${ACME_DEBUG:-false}" = "true" ]; then \
+      echo "🔧 Running acme.sh install with debug output..."; \
+      ./acme.sh --install \
+        --home /acme \
+        --config-home "${LE_CONFIG_HOME}" \
+        --cert-home "${LE_CERT_HOME}" \
+        --debug; \
+    else \
+      echo "🔧 Running acme.sh install..."; \
+      ./acme.sh --install \
+        --home /acme \
+        --config-home "${LE_CONFIG_HOME}" \
+        --cert-home "${LE_CERT_HOME}"; \
+    fi; \
+    echo "✅ acme.sh install complete to /acme"; \
+  fi
+
+
+# Create helper commands for acme.sh verbs
+RUN for verb in help version install uninstall upgrade issue signcsr deploy \
+  install-cert renew renew-all revoke remove list info showcsr \
+  install-cronjob uninstall-cronjob cron toPkcs toPkcs8 update-account \
+  register-account create-account-key create-domain-key createCSR \
+  deactivate deactivate-account set-notify set-default-ca set-default-chain; do \
+    printf '#!/usr/bin/env sh\nexec /acme/acme.sh --%s --config-home %s "$@"\n' \
+      "${verb}" "${LE_CONFIG_HOME}" > "/usr/local/bin/--${verb}"; \
+    chmod +x "/usr/local/bin/--${verb}"; \
+  done
 
 # Install Dell iDRAC software
 RUN apk --no-cache add rpm && \
@@ -56,62 +103,7 @@ RUN [ ! -e /usr/lib/libssl.so ] && { \
 
 # Create racadm symlink
 RUN ln -s /opt/dell/srvadmin/bin/idracadm7 /usr/bin/racadm
-
 # Install acme.sh
-COPY ./acme.sh /install_acme.sh/acme.sh
-COPY ./deploy /install_acme.sh/deploy
-COPY ./dnsapi /install_acme.sh/dnsapi
-COPY ./notify /install_acme.sh/notify
-
-RUN set -eux; \
-  echo "🚀 Starting acme.sh install to ${LE_WORKING_DIR}..."; \
-  if [ "${ACME_DRY_RUN:-false}" = "true" ]; then \
-    echo "🧪 Dry-run mode: skipping acme.sh install"; \
-  else \
-    cd /install_acme.sh && chmod +x acme.sh; \
-    if [ "${ACME_DEBUG:-false}" = "true" ]; then \
-      echo "🔧 Running local acme.sh install with debug output..."; \
-      ./acme.sh --install \
-        --home "${LE_WORKING_DIR}" \
-        --config-home "${LE_CONFIG_HOME}" \
-        --cert-home "${LE_CERT_HOME}" \
-        --debug \
-      || { \
-        echo "⚠️ Local install failed, falling back to curl..."; \
-        curl -fsSL https://get.acme.sh | sh -s -- \
-          --home "${LE_WORKING_DIR}" \
-          --config-home "${LE_CONFIG_HOME}" \
-          --cert-home "${LE_CERT_HOME}" \
-          --debug; \
-      }; \
-    else \
-      echo "🔧 Running local acme.sh install..."; \
-      ./acme.sh --install \
-        --home "${LE_WORKING_DIR}" \
-        --config-home "${LE_CONFIG_HOME}" \
-        --cert-home "${LE_CERT_HOME}" \
-      || { \
-        echo "⚠️ Local install failed, falling back to curl..."; \
-        curl -fsSL https://get.acme.sh | sh -s -- \
-          --home "${LE_WORKING_DIR}" \
-          --config-home "${LE_CONFIG_HOME}" \
-          --cert-home "${LE_CERT_HOME}"; \
-      }; \
-    fi; \
-    rm -rf /install_acme.sh; \
-    echo "✅ acme.sh install complete to ${LE_WORKING_DIR}"; \
-  fi
-
-# Create helper commands for acme.sh verbs
-RUN for verb in help version install uninstall upgrade issue signcsr deploy \
-  install-cert renew renew-all revoke remove list info showcsr \
-  install-cronjob uninstall-cronjob cron toPkcs toPkcs8 update-account \
-  register-account create-account-key create-domain-key createCSR \
-  deactivate deactivate-account set-notify set-default-ca set-default-chain; do \
-    printf '#!/usr/bin/env sh\nexec %s/acme.sh --%s --config-home %s "$@"\n' \
-      "${LE_WORKING_DIR}" "${verb}" "${LE_CONFIG_HOME}" > "/usr/local/bin/--${verb}"; \
-    chmod +x "/usr/local/bin/--${verb}"; \
-  done
 
 # Entrypoint with modular init
 RUN printf '#!/usr/bin/env sh\n\
