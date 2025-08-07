@@ -22,7 +22,11 @@ This Docker image combines the power of acme.sh - a pure Unix shell script imple
 The container uses a smart initialization system that:
 
 1. **Installs acme.sh to `/defaults`** - Contains all original scripts and plugins
+<<<<<<< HEAD
 2. **Creates working directory at `/acme`** - Where you mount your custom files  
+=======
+2. **Creates working directory at `/hooks`** - Where you mount your custom files  
+>>>>>>> 27db44c1 (Update readme)
 3. **Symlinks missing files** - Ensures you have access to both custom and default files
 4. **Preserves user files** - Never overwrites your custom scripts
 
@@ -35,7 +39,11 @@ Container Paths:
 │   ├── deploy/         # Default deploy hooks
 │   ├── dnsapi/         # Default DNS API scripts  
 │   └── notify/         # Default notification scripts
+<<<<<<< HEAD
 ├── /acme/              # Working directory (your mounts)
+=======
+├── /hooks/             # Working directory (your mounts)
+>>>>>>> 27db44c1 (Update readme)
 │   ├── acme.sh         # Symlinked from defaults
 │   ├── deploy/         # Your custom + default deploy hooks
 │   ├── dnsapi/         # Your custom + default DNS APIs
@@ -90,7 +98,11 @@ docker run -d --name acme-daemon \
 Create the following directory structure:
 
 ```bash
+<<<<<<< HEAD
 mkdir -p certs config hooks/deploy hooks/dnsapi hooks/notify
+=======
+mkdir -p certs config deploy dnsapi notify
+>>>>>>> 27db44c1 (Update readme)
 ```
 
 ### docker-compose.yml
@@ -128,6 +140,7 @@ services:
       - ./config:/config
       
       # Custom deploy hooks
+<<<<<<< HEAD
       - ./hooks/deploy:/acme/deploy
       
       # Custom DNS API scripts  
@@ -135,6 +148,15 @@ services:
       
       # Custom notification scripts
       - ./hooks/notify:/acme/notify
+=======
+      - ./deploy:/hooks/deploy
+      
+      # Custom DNS API scripts  
+      - ./dnsapi:/hooks/dnsapi
+      
+      # Custom notification scripts
+      - ./notify:/hooks/notify
+>>>>>>> 27db44c1 (Update readme)
     
     # Run as daemon to enable cron jobs
     command: daemon
@@ -183,9 +205,15 @@ docker-compose logs -f acme-sh
 
 | Host Path | Container Path | Purpose |
 |-----------|---------------|---------|
+<<<<<<< HEAD
 | `./hooks/deploy` | `/acme/deploy` | Custom deploy hooks |
 | `./hooks/dnsapi` | `/acme/dnsapi` | Custom DNS API scripts |
 | `./hooks/notify` | `/acme/notify` | Custom notification scripts |
+=======
+| `./deploy` | `/hooks/deploy` | Custom deploy hooks |
+| `./dnsapi` | `/hooks/dnsapi` | Custom DNS API scripts |
+| `./notify` | `/hooks/notify` | Custom notification scripts |
+>>>>>>> 27db44c1 (Update readme)
 | `./config` | `/config` | Account configuration |
 | `./certs` | `/certs` | Certificate output |
 
@@ -193,11 +221,19 @@ docker-compose logs -f acme-sh
 
 ### Deploy Hooks
 
+<<<<<<< HEAD
 Place custom deploy hooks in `./hooks/deploy/`:
 
 ```bash
 #!/usr/bin/env sh
 # hooks/deploy/my-custom-deploy.sh
+=======
+Place custom deploy hooks in `./deploy/`:
+
+```bash
+#!/usr/bin/env sh
+# deploy/my-custom-deploy.sh
+>>>>>>> 27db44c1 (Update readme)
 
 my_custom_deploy() {
     _cdomain="$1"
@@ -215,11 +251,19 @@ my_custom_deploy() {
 
 ### DNS API Scripts
 
+<<<<<<< HEAD
 Place custom DNS scripts in `./hooks/dnsapi/`:
 
 ```bash
 #!/usr/bin/env sh
 # hooks/dnsapi/dns_custom.sh
+=======
+Place custom DNS scripts in `./dnsapi/`:
+
+```bash
+#!/usr/bin/env sh
+# dnsapi/dns_custom.sh
+>>>>>>> 27db44c1 (Update readme)
 
 dns_custom_add() {
     fulldomain=$1
@@ -244,7 +288,11 @@ dns_custom_rm() {
 |----------|---------|-------------|
 | `LE_CONFIG_HOME` | `/config` | Account configuration directory |
 | `LE_CERT_HOME` | `/certs` | Certificate output directory |
+<<<<<<< HEAD
 | `LE_BASE` | `/acme` | Working directory |
+=======
+| `LE_BASE` | `/hooks` | Working directory |
+>>>>>>> 27db44c1 (Update readme)
 | `LE_WORKING_DIR` | `/defaults` | Original installation directory |
 | `AUTO_UPGRADE` | `1` | Enable automatic acme.sh upgrades |
 | `DBG` | `false` | Enable debug output during initialization |
@@ -278,7 +326,11 @@ docker run --rm -e DRYRUN=true nicat23/idracadm7:v1 --help
 Check the symlink structure:
 
 ```bash
+<<<<<<< HEAD
 docker exec acme-sh find /acme -type l -ls
+=======
+docker exec acme-sh find /hooks -type l -ls
+>>>>>>> 27db44c1 (Update readme)
 ```
 
 ### Monitor Container
@@ -386,8 +438,13 @@ docker run --rm --read-only --tmpfs /tmp --tmpfs /var/tmp \
 
 ```bash
 # Ensure proper directory permissions
+<<<<<<< HEAD
 mkdir -p ./certs ./config ./hooks/deploy ./hooks/dnsapi ./hooks/notify
 chmod 755 ./certs ./config ./hooks ./hooks/deploy ./hooks/dnsapi ./hooks/notify
+=======
+mkdir -p ./certs ./config ./deploy ./dnsapi ./notify
+chmod 755 ./certs ./config ./deploy ./dnsapi ./notify
+>>>>>>> 27db44c1 (Update readme)
 
 # SELinux considerations
 chcon -Rt svirt_sandbox_file_t ./certs ./config
@@ -413,7 +470,11 @@ docker run --rm -it \
 docker-compose logs acme-sh
 
 # Verify symlink structure
+<<<<<<< HEAD
 docker-compose exec acme-sh find /acme -type l -ls
+=======
+docker-compose exec acme-sh find /hooks -type l -ls
+>>>>>>> 27db44c1 (Update readme)
 ```
 
 ### Platform-Specific Issues
