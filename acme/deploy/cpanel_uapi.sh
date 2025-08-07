@@ -1,0 +1,1 @@
+/defaults/acme.sh/deploy/cpanel_uapi.sh

@@ -1,0 +1,1 @@
+/defaults/acme.sh/deploy/gcore_cdn.sh

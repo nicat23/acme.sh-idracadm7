@@ -1,0 +1,1 @@
+/defaults/acme.sh/deploy/zyxel_gs1900.sh

@@ -1,0 +1,1 @@
+/defaults/acme.sh/deploy/synology_dsm.sh
