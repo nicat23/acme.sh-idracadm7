@@ -1,7 +1,7 @@
 FROM alpine:3.22
 
 # Install required packages
-RUN apk --no-cache add -f \
+RUN apk --no-cache add \
   openssl \
   openssh-client \
   coreutils \
@@ -18,7 +18,8 @@ RUN apk --no-cache add -f \
   cronie \
   gcompat \
   libc6-compat \
-  libstdc++
+  libstdc++ \
+  rpm
 
 # Environment variables
 ENV LE_CONFIG_HOME=/config \
@@ -27,7 +28,9 @@ ENV LE_CONFIG_HOME=/config \
     LE_BASE=/acme \
     AUTO_UPGRADE=1 \
     ACME_DEBUG=false \
-    ACME_DRY_RUN=false
+    ACME_DRY_RUN=false \
+    DRY_RUN=false \
+    DEBUG=false
 
 # Create volume mount directories
 RUN mkdir -p /certs /config \
@@ -36,29 +39,28 @@ RUN mkdir -p /certs /config \
     && mkdir -p /init.d /defaults
 
 # Copy init scripts and defaults
-
 COPY init.d/ /init.d/
 RUN chmod +x /init.d/*.sh
-
-# Copy main script
+COPY verify-overlay.sh /usr/local/bin/--verify-overlay
+RUN chmod +x /usr/local/bin/--verify-overlay
 COPY defaults/acme.sh /defaults/acme.sh
-
-# Copy integration directories
 COPY defaults/deploy/   /defaults/deploy/
 COPY defaults/dnsapi/   /defaults/dnsapi/
 COPY defaults/notify/   /defaults/notify/
 
-# Verify contents (optional but recommended)
+# Verify contents
 RUN echo "📦 Verifying /defaults contents:" && ls -lR /defaults
+
+# Install acme.sh
 RUN set -eux; \
   echo "🚀 Installing acme.sh from /defaults/acme.sh into /acme..."; \
   chmod +x /defaults/acme.sh; \
   cd /defaults; \
-  if [ "${ACME_DRY_RUN:-false}" = "true" ]; then \
+  if [ "${ACME_DRY_RUN}" = "true" ]; then \
     echo "🧪 Dry-run mode: skipping acme.sh install"; \
   else \
     mkdir -p /acme; \
-    if [ "${ACME_DEBUG:-false}" = "true" ]; then \
+    if [ "${ACME_DEBUG}" = "true" ]; then \
       echo "🔧 Running acme.sh install with debug output..."; \
       ./acme.sh --install \
         --home /acme \
@@ -74,7 +76,9 @@ RUN set -eux; \
     fi; \
     echo "✅ acme.sh install complete to /acme"; \
   fi
-
+RUN ln -s /acme/acme.sh /usr/local/bin/acme.sh && \
+  (crontab -l 2>/dev/null | grep acme.sh | \
+   sed 's#> /dev/null#> /proc/1/fd/1 2>/proc/1/fd/2#' | crontab - || true)
 
 # Create helper commands for acme.sh verbs
 RUN for verb in help version install uninstall upgrade issue signcsr deploy \
@@ -88,12 +92,11 @@ RUN for verb in help version install uninstall upgrade issue signcsr deploy \
   done
 
 # Install Dell iDRAC software
-RUN apk --no-cache add rpm && \
-  rpm -ivh --nodeps --force \
+RUN rpm -ivh --nodeps --force \
     https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-argtable2-11.0.0.0-5268.el9.x86_64.rpm \
     https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-hapi-11.0.0.0-5268.el9.x86_64.rpm \
-    https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-idracadm7-11.0.0.0-5268.el9.x86_64.rpm && \
-  apk del rpm jq && rm -rf /var/cache/apk/*
+    https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-idracadm7-11.0.0.0-5268.el9.x86_64.rpm \
+  && apk del rpm jq && rm -rf /var/cache/apk/*
 
 # Create SSL symlinks for Dell tools
 RUN [ ! -e /usr/lib/libssl.so ] && { \
@@ -103,24 +106,27 @@ RUN [ ! -e /usr/lib/libssl.so ] && { \
 
 # Create racadm symlink
 RUN ln -s /opt/dell/srvadmin/bin/idracadm7 /usr/bin/racadm
-# Install acme.sh
+# Entrypoint with modular init and safe exec
+RUN echo '#!/usr/bin/env sh' > /entry.sh && \
+    echo 'echo "🚀 Running container initialization..."' >> /entry.sh && \
+    echo '' >> /entry.sh && \
+    echo 'for f in /init.d/*.sh; do' >> /entry.sh && \
+    echo '  echo "🔧 Executing $f..."' >> /entry.sh && \
+    echo '  bash "$f"' >> /entry.sh && \
+    echo 'done' >> /entry.sh && \
+    echo '' >> /entry.sh && \
+    echo 'if [ "$#" -eq 0 ]; then' >> /entry.sh && \
+    echo '  echo "ℹ️ No command provided. Showing help:"' >> /entry.sh && \
+    echo '  exec /usr/local/bin/--help' >> /entry.sh && \
+    echo 'else' >> /entry.sh && \
+    echo '  echo "▶️ Executing: $@"' >> /entry.sh && \
+    echo '  exec "$@"' >> /entry.sh && \
+    echo 'fi' >> /entry.sh && \
+    chmod +x /entry.sh
 
-# Entrypoint with modular init
-RUN printf '#!/usr/bin/env sh\n\
-echo "🚀 Running container initialization..."\n\
-for f in /init.d/*.sh; do\n\
-  echo "🔧 Executing $f..."\n\
-  bash "$f"\n\
-done\n\
-if [ "$1" = "daemon" ]; then\n\
-  echo "🔄 Starting cron daemon..."\n\
-  exec crond -n -s -m off\n\
-else\n\
-  exec -- "$@"\n\
-fi\n' > /entry.sh && chmod +x /entry.sh
 
 # Define volumes
 VOLUME ["/certs", "/config", "/acme/deploy", "/acme/dnsapi", "/acme/notify"]
 
 ENTRYPOINT ["/entry.sh"]
-CMD ["--help"]
+CMD []
