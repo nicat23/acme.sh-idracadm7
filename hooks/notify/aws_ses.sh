@@ -1,0 +1,1 @@
+/defaults/notify/aws_ses.sh

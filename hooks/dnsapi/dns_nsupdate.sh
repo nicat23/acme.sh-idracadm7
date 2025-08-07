@@ -1,0 +1,1 @@
+/defaults/dnsapi/dns_nsupdate.sh

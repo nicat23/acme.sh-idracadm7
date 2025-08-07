@@ -1,0 +1,1 @@
+/defaults/notify/slack_app.sh

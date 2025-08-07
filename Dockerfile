@@ -5,6 +5,7 @@ RUN apk --no-cache add -f \
   openssl \
   openssh-client \
   coreutils \
+  bash \
   bind-tools \
   curl \
   sed \
@@ -28,17 +29,24 @@ ENV LE_CONFIG_HOME=/config \
     ACME_DEBUG=false \
     ACME_DRY_RUN=false
 
-# Copy initialization and test scripts
-COPY ./init /init
-COPY ./test /test
+# Create volume mount directories
+RUN mkdir -p /certs /config \
+    && mkdir -p /acme/deploy /acme/dnsapi /acme/notify \
+    && mkdir -p /mnt/deploy /mnt/dnsapi /mnt/notify \
+    && mkdir -p /init.d /defaults
 
-# Install Dell iDRAC software using rpm
+# Copy init scripts and defaults
+COPY ./init.d/ /init.d/
+COPY ./defaults/ /defaults/
+RUN chmod +x /init.d/*.sh
+
+# Install Dell iDRAC software
 RUN apk --no-cache add rpm && \
   rpm -ivh --nodeps --force \
     https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-argtable2-11.0.0.0-5268.el9.x86_64.rpm \
     https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-hapi-11.0.0.0-5268.el9.x86_64.rpm \
     https://linux.dell.com/repo/hardware/DSU_24.11.11/os_dependent/RHEL9_64/srvadmin/srvadmin-idracadm7-11.0.0.0-5268.el9.x86_64.rpm && \
-  apk del rpm
+  apk del rpm jq && rm -rf /var/cache/apk/*
 
 # Create SSL symlinks for Dell tools
 RUN [ ! -e /usr/lib/libssl.so ] && { \
@@ -94,7 +102,7 @@ RUN set -eux; \
     echo "✅ acme.sh install complete to ${LE_WORKING_DIR}"; \
   fi
 
-# Create helper commands for all acme.sh verbs
+# Create helper commands for acme.sh verbs
 RUN for verb in help version install uninstall upgrade issue signcsr deploy \
   install-cert renew renew-all revoke remove list info showcsr \
   install-cronjob uninstall-cronjob cron toPkcs toPkcs8 update-account \
@@ -105,21 +113,19 @@ RUN for verb in help version install uninstall upgrade issue signcsr deploy \
     chmod +x "/usr/local/bin/--${verb}"; \
   done
 
-# Create entrypoint script
+# Entrypoint with modular init
 RUN printf '#!/usr/bin/env sh\n\
-if [ -f /init/main.sh ]; then\n\
-  echo "🚀 Running container initialization..."\n\
-  /init/main.sh\n\
-fi\n\
+echo "🚀 Running container initialization..."\n\
+for f in /init.d/*.sh; do\n\
+  echo "🔧 Executing $f..."\n\
+  bash "$f"\n\
+done\n\
 if [ "$1" = "daemon" ]; then\n\
   echo "🔄 Starting cron daemon..."\n\
   exec crond -n -s -m off\n\
 else\n\
-  exec "$@"\n\
+  exec -- "$@"\n\
 fi\n' > /entry.sh && chmod +x /entry.sh
-
-# Clean up
-RUN apk del jq
 
 # Define volumes
 VOLUME ["/certs", "/config", "/acme/deploy", "/acme/dnsapi", "/acme/notify"]

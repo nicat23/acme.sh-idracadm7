@@ -1,0 +1,1 @@
+/defaults/notify/xmpp.sh

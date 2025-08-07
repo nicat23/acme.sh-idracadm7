@@ -1,0 +1,1 @@
+/defaults/deploy/synology_dsm.sh

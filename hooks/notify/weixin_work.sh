@@ -1,0 +1,1 @@
+/defaults/notify/weixin_work.sh

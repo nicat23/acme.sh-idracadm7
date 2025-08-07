@@ -1,0 +1,1 @@
+/defaults/notify/ntfy.sh
