@@ -1,12 +1,3 @@
-certs/
-config/
-ignore/
 dev/
-legacy/
-# Local test overrides
-test/env.local.sh
-
-# Dry-run and test artifacts
-/tmp/test/
-/tmp/justin/
-.vscode/
+mounted/
+certs/

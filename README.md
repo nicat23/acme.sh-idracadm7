@@ -1,496 +1,311 @@
-# ACME.sh with Dell iDRAC7 Support
+# ACME.sh with Dell iDRAC Support
 
-![Docker Pulls](https://img.shields.io/docker/pulls/nicat23/idracadm7)
-![Docker Image Version](https://img.shields.io/docker/v/nicat23/idracadm7/v2)
-![License](https://img.shields.io/badge/license-GPL-blue)
+A containerized version of the popular ACME.sh SSL certificate management tool with integrated Dell iDRAC support for enterprise server environments.
 
-A production-ready containerized solution that combines [ACME.sh](https://github.com/acmesh-official/acme.sh) SSL certificate automation with integrated Dell iDRAC management capabilities. Designed for enterprise environments requiring automated certificate deployment to Dell servers.
+## About
 
-## 🚀 Features
+This Docker image combines the power of [acme.sh](https://github.com/acmesh-official/acme.sh) - a pure Unix shell script implementing the ACME client protocol - with Dell iDRAC management capabilities. It's designed for enterprise environments where SSL certificates need to be automatically deployed to Dell servers via iDRAC.
 
-### Core Functionality
-- **Complete ACME.sh Integration**: Full support for Let's Encrypt and RFC8555-compliant Certificate Authorities
-- **Native iDRAC Support**: Built-in `racadm` tools for seamless Dell server management
-- **Automated Deployment**: Integrated `idrac.sh` deploy hook for streamlined certificate installation
-- **Multi-DNS Provider**: Support for 100+ DNS providers including Cloudflare, AWS Route53, and more
-- **Certificate Lifecycle**: Automated issuance, renewal, and deployment with cron support
+## Credits
 
-### Enterprise Features
-- **Security Hardened**: Minimal Alpine Linux base with security best practices
-- **Production Ready**: Persistent configuration, logging, and monitoring support  
-- **Multi-Architecture**: Native support for `linux/amd64` and `linux/arm64`
-- **Custom Hooks**: Extensible architecture for custom deploy, DNS, and notification scripts
-- **Migration Friendly**: Drop-in replacement for existing ACME.sh installations
+- **Original ACME.sh Project**: [acmesh-official/acme.sh](https://github.com/acmesh-official/acme.sh)
+- **ACME.sh Author**: Neil Pang and contributors
+- **Dell iDRAC Integration**: This image includes Dell Server Administrator tools for iDRAC management
+- **iDRAC Deployment Hook Inspiration**: The included `idrac.sh` deploy hook was inspired by [societa-astronomica-g-v-schiaparelli/acme-idrac7](https://github.com/societa-astronomica-g-v-schiaparelli/acme-idrac7) and [kroy-the-rabbit/acme_idrac_deployment](https://github.com/kroy-the-rabbit/acme_idrac_deployment)
 
-## 📋 Quick Start
+## Features
+
+- ✅ Full ACME.sh functionality for Let's Encrypt and other ACME CAs
+- ✅ Dell iDRAC integration via `racadm` command
+- ✅ Automated iDRAC certificate deployment with included `idrac.sh` deploy hook
+- ✅ Support for multiple DNS providers and deployment hooks
+- ✅ Automatic certificate renewal via cron
+- ✅ Custom deploy, DNS API, and notification scripts support
+- ✅ Based on Alpine Linux for minimal footprint
+
+## Quick Start
 
 ### Basic Certificate Issuance
 ```bash
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
+  nicat23/idracadm7:v1 \
   --issue -d example.com --standalone
 ```
 
-### Issue and Deploy to iDRAC (One Command)
-```bash
-# Set your environment variables
-export DEPLOY_IDRAC_HOST="idrac.example.com"
-export DEPLOY_IDRAC_USER="root"  
-export DEPLOY_IDRAC_PASS="your-password"
-export CF_Token="your-cloudflare-token"
+### Automated iDRAC Certificate Deployment with Deploy Hook
 
-# Issue certificate and automatically deploy to iDRAC
+Use the included `idrac.sh` deploy hook for streamlined certificate deployment:
+
+```bash
+# Set environment variables for iDRAC connection
+export DEPLOY_IDRAC_HOST="192.168.1.100"
+export DEPLOY_IDRAC_USER="root"
+export DEPLOY_IDRAC_PASS="password"
+
+# Issue and automatically deploy certificate to iDRAC
 docker run --rm \
   -v "$(pwd)/acme.sh:/acme.sh" \
   -e DEPLOY_IDRAC_HOST \
   -e DEPLOY_IDRAC_USER \
   -e DEPLOY_IDRAC_PASS \
-  -e CF_Token \
-  nicat23/idracadm7:v2 \
+  -e CF_Token="your-cloudflare-token" \
+  nicat23/idracadm7:v1 \
   --issue --dns dns_cf -d "idrac.example.com" --deploy-hook idrac.sh
 ```
 
-## 🔧 Installation & Usage
+Or deploy an existing certificate:
 
-### Docker Compose (Recommended)
-Create a `docker-compose.yml` file:
-
-```yaml
-version: '3.8'
-
-services:
-  acme-daemon:
-    image: nicat23/idracadm7:v2
-    container_name: acme-daemon
-    restart: unless-stopped
-    volumes:
-      - ./acme.sh:/acme.sh
-      - ./logs:/var/log/acme
-    environment:
-      - AUTO_UPGRADE=1
-      - LOG_LEVEL=2
-      # DNS Provider Credentials
-      - CF_Token=your-cloudflare-token
-      - CF_Account_ID=your-account-id
-      # iDRAC Configuration
-      - DEPLOY_IDRAC_HOST=idrac.example.com
-      - DEPLOY_IDRAC_USER=root
-      - DEPLOY_IDRAC_PASS=your-password
-    command: daemon
-    security_opt:
-      - no-new-privileges:true
-    mem_limit: 256m
-    cpus: 0.5
-    networks:
-      - acme-network
-
-networks:
-  acme-network:
-    driver: bridge
+```bash
+# Deploy existing certificate using the idrac.sh hook
+docker run --rm \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  -e DEPLOY_IDRAC_HOST="192.168.1.100" \
+  -e DEPLOY_IDRAC_USER="root" \
+  -e DEPLOY_IDRAC_PASS="password" \
+  nicat23/idracadm7:v1 \
+  --deploy -d "idrac.example.com" --deploy-hook idrac.sh
 ```
 
-Start the service:
+### Manual iDRAC Certificate Deployment
 ```bash
-docker compose up -d
+docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 \
+  racadm -r 192.168.1.100 -u root -p password sslcertupload -t 1 -f /acme.sh/example.com/fullchain.cer
 ```
 
-### Standalone Container Usage
-
-#### Certificate Management
+### Run as Daemon (with automatic renewals)
 ```bash
-# Issue certificate with DNS validation
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  -e CF_Token="your-token" \
-  nicat23/idracadm7:v2 \
-  --issue -d example.com --dns dns_cf
+docker run -d --name acme-daemon \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 daemon
+```
 
-# Renew all certificates
+## Usage
+
+### Available Commands
+
+The container supports all standard acme.sh commands:
+
+```bash
+# Issue a certificate
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
+  nicat23/idracadm7:v1 \
+  --issue -d example.com --dns dns_cloudflare
+
+# Renew certificates
+docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 \
   --renew-all
 
-# List all certificates
+# List certificates
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
+  nicat23/idracadm7:v1 \
   --list
 ```
 
-#### Direct iDRAC Management
+### Dell iDRAC Management
+
+Use the `racadm` command directly:
+
 ```bash
-# Check iDRAC SSL certificate status
-docker run --rm nicat23/idracadm7:v2 \
-  racadm -r 192.168.1.100 -u root -p password \
-  sslcertview
+# Check iDRAC status
+docker run --rm nicat23/idracadm7:v1 \
+  racadm -r 192.168.1.100 -u root -p password getconfig -g cfgRacTuning
 
-# Upload certificate to iDRAC
+# Upload SSL certificate to iDRAC
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  racadm -r 192.168.1.100 -u root -p password \
-  sslcertupload -t 1 -f /acme.sh/example.com/fullchain.cer
-
-# Reset iDRAC to apply new certificate
-docker run --rm nicat23/idracadm7:v2 \
-  racadm -r 192.168.1.100 -u root -p password \
-  racreset soft
+  nicat23/idracadm7:v1 \
+  racadm -r 192.168.1.100 -u root -p password sslcertupload -t 1 -f /acme.sh/example.com/fullchain.cer
 ```
 
-## 🔐 Dell iDRAC Integration
+## Environment Variables
 
-### Using the Built-in Deploy Hook
-
-The container includes an optimized `idrac.sh` deploy hook that automatically:
-- Uploads the certificate and private key to iDRAC
-- Performs certificate validation
-- Gracefully resets iDRAC to apply changes
-- Provides detailed logging and error handling
-
-#### Environment Variables for Deploy Hook
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DEPLOY_IDRAC_HOST` | ✅ | iDRAC IP address or hostname |
-| `DEPLOY_IDRAC_USER` | ✅ | iDRAC username (typically `root`) |
-| `DEPLOY_IDRAC_PASS` | ✅ | iDRAC password |
-| `DEPLOY_IDRAC_SLOT` | ❌ | Certificate slot (default: `1`) |
-
-#### Complete Workflow Example
-```bash
-#!/bin/bash
-
-# Configuration
-export DEPLOY_IDRAC_HOST="192.168.1.100"
-export DEPLOY_IDRAC_USER="root"
-export DEPLOY_IDRAC_PASS="your-secure-password"
-export CF_Token="your-cloudflare-token"
-export DOMAIN="idrac.example.com"
-
-# Issue certificate using Cloudflare DNS
-docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
-  -e CF_Token \
-  nicat23/idracadm7:v2 \
-  --issue -d "$DOMAIN" --dns dns_cf
-
-# Deploy to iDRAC using the integrated hook
-docker run --rm \
-  -v "$(pwd)/acme.sh:/acme.sh" \
-  -e DEPLOY_IDRAC_HOST \
-  -e DEPLOY_IDRAC_USER \
-  -e DEPLOY_IDRAC_PASS \
-  nicat23/idracadm7:v2 \
-  --deploy -d "$DOMAIN" --deploy-hook idrac.sh
-
-echo "Certificate deployed to iDRAC at $DEPLOY_IDRAC_HOST"
-```
-
-### Manual iDRAC Certificate Management
-```bash
-# Step-by-step manual deployment
-IDRAC_HOST="192.168.1.100"
-IDRAC_USER="root"
-IDRAC_PASS="password"
-DOMAIN="idrac.example.com"
-
-# 1. Upload certificate
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  racadm -r "$IDRAC_HOST" -u "$IDRAC_USER" -p "$IDRAC_PASS" \
-  sslcertupload -t 1 -f "/acme.sh/$DOMAIN/fullchain.cer"
-
-# 2. Upload private key  
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  racadm -r "$IDRAC_HOST" -u "$IDRAC_USER" -p "$IDRAC_PASS" \
-  sslkeyupload -t 1 -f "/acme.sh/$DOMAIN/$DOMAIN.key"
-
-# 3. Verify certificate installation
-docker run --rm nicat23/idracadm7:v2 \
-  racadm -r "$IDRAC_HOST" -u "$IDRAC_USER" -p "$IDRAC_PASS" \
-  sslcertview
-
-# 4. Reset iDRAC to activate certificate
-docker run --rm nicat23/idracadm7:v2 \
-  racadm -r "$IDRAC_HOST" -u "$IDRAC_USER" -p "$IDRAC_PASS" \
-  racreset soft
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-#### Core ACME.sh Configuration
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LE_CONFIG_HOME` | `/acme.sh` | ACME.sh configuration directory |
 | `AUTO_UPGRADE` | `1` | Enable automatic acme.sh upgrades |
-| `LOG_LEVEL` | `1` | Logging verbosity (1-3) |
-| `LOG_FILE` | `/acme.sh/acme.sh.log` | Log file location |
+| `DEPLOY_IDRAC_HOST` | - | iDRAC IP address or hostname for deploy hook |
+| `DEPLOY_IDRAC_USER` | - | iDRAC username for deploy hook |
+| `DEPLOY_IDRAC_PASS` | - | iDRAC password for deploy hook |
 
-#### DNS Provider Credentials
-| Variable | Provider | Description |
-|----------|----------|-------------|
-| `CF_Token` | Cloudflare | API Token |
-| `CF_Account_ID` | Cloudflare | Account ID |
-| `AWS_ACCESS_KEY_ID` | AWS Route53 | Access Key |
-| `AWS_SECRET_ACCESS_KEY` | AWS Route53 | Secret Key |
-| `GODADDY_Key` | GoDaddy | API Key |
-| `GODADDY_Secret` | GoDaddy | API Secret |
+## Volumes
 
-> **Note**: See [ACME.sh DNS API documentation](https://github.com/acmesh-official/acme.sh/wiki/dnsapi) for complete provider list.
+- `/acme.sh` - Persistent storage for certificates and configuration
 
-#### iDRAC Deploy Hook Configuration
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DEPLOY_IDRAC_HOST` | - | iDRAC IP or hostname |
-| `DEPLOY_IDRAC_USER` | - | iDRAC username |
-| `DEPLOY_IDRAC_PASS` | - | iDRAC password |
-| `DEPLOY_IDRAC_SLOT` | `1` | Certificate slot number |
+### Configuration Structure
 
-### Volume Mounts
+The `/acme.sh` mount point contains your persistent configuration and certificates:
 
-#### Required Volumes
-- `/acme.sh` - Persistent certificate storage and configuration
-- `/var/log/acme` - Log files (recommended for production)
-
-#### Directory Structure
 ```
-./acme.sh/
-├── account.conf          # Main configuration
-├── acme.sh.log           # Application logs
-├── http.header           # HTTP headers config
-└── [domain]/             # Certificate directories
-    ├── [domain].cer      # Domain certificate
-    ├── [domain].key      # Private key
-    ├── fullchain.cer     # Full certificate chain
+/acme.sh/
+├── account.conf          # Main configuration file
+├── http.header          # HTTP headers configuration
+├── acme.sh.log          # Log file (if LOG_FILE is configured)
+└── [domain]/            # Certificate directories (created after issuance)
+    ├── [domain].cer     # Certificate file
+    ├── [domain].key     # Private key
+    ├── fullchain.cer    # Full certificate chain
     └── ca.cer           # CA certificate
 ```
 
-### Configuration Management
+### Custom Configuration
 
-#### Using Built-in Commands (Recommended)
+You can customize your acme.sh environment through the `account.conf` file in your mounted volume. **Important**: According to the acme.sh author, this file should be modified using acme.sh's built-in commands rather than direct editing, as the script manages this configuration automatically.
+
+**Migration from existing acme.sh installation**: If you already have acme.sh running elsewhere, you can copy your existing `account.conf`, `http.header` files, and entire domain certificate directories directly into the `/acme.sh` mount point. This provides a drop-in solution that preserves your configuration, DNS provider credentials, existing certificates, and renewal schedules without any reconfiguration needed.
+
+#### Recommended Configuration Method
+
+Use acme.sh commands to set configuration values:
+
 ```bash
-# Configure account email
+# Set account email
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  --set-notify --notify-hook mail --notify-email admin@example.com
+  nicat23/idracadm7:v1 \
+  --set-notify --notify-hook mail --notify-email your-email@example.com
 
-# Set default CA
+# Set default CA server
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
+  nicat23/idracadm7:v1 \
   --set-default-ca --server letsencrypt
 
-# Configure DNS provider permanently
+# Configure DNS provider credentials (example with Cloudflare)
 docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  -e CF_Token="your-token" \
-  nicat23/idracadm7:v2 \
-  --issue -d temp.example.com --dns dns_cf --dry-run
+  -e CF_Token="your-cloudflare-token" \
+  -e CF_Account_ID="your-cloudflare-account-id" \
+  nicat23/idracadm7:v1 \
+  --issue -d example.com --dns dns_cf
 ```
 
-#### Migration from Existing Installation
-```bash
-# Copy existing ACME.sh configuration
-cp -r /path/to/existing/acme.sh/* ./acme.sh/
+#### Example account.conf Structure
 
-# Verify migration
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  --list
+After using acme.sh commands, your `account.conf` might look like this:
+
+```bash
+# This file is automatically managed by acme.sh
+ACCOUNT_EMAIL='your-email@example.com'
+SAVED_CF_Token='your-cloudflare-token'
+SAVED_CF_Account_ID='your-cloudflare-account-id'
+DEFAULT_ACME_SERVER='https://acme-v02.api.letsencrypt.org/directory'
+LOG_FILE="/acme.sh/acme.sh.log"
+LOG_LEVEL=1
+AUTO_UPGRADE='1'
+
+# iDRAC deploy hook configuration (set when using the deploy hook)
+DEPLOY_IDRAC_HOST='192.168.1.100'
+DEPLOY_IDRAC_USER='root'
+DEPLOY_IDRAC_PASS='password'
 ```
 
-## 🔒 Security Considerations
+The acme.sh script automatically saves DNS provider credentials and deploy hook settings when you use them, creating persistent configuration that survives container restarts.
 
-### Container Security
+## Custom Scripts
+
+This image supports custom deploy hooks, DNS API scripts, and notification hooks by copying them into the appropriate directories during the build:
+
+- **Deploy hooks**: Custom scripts in the `deploy/` directory (including the built-in `idrac.sh`)
+- **DNS API scripts**: Custom DNS provider scripts in the `dnsapi/` directory  
+- **Notification hooks**: Custom notification scripts in the `notify/` directory
+
+The included folder structure:
+```
+.
+├── Dockerfile
+├── acme.sh
+├── deploy/
+│   └── idrac.sh
+├── dnsapi/
+└── notify/
+```
+
+## Examples
+
+### Complete Workflow with DNS Challenge and iDRAC Deploy Hook
+
 ```bash
-# Run with security restrictions
+# Single command to issue and deploy certificate to iDRAC
 docker run --rm \
-  --cap-drop=ALL \
-  --cap-add=DAC_OVERRIDE \
-  --cap-add=SETUID \
-  --cap-add=SETGID \
-  --security-opt=no-new-privileges:true \
-  --read-only \
-  --tmpfs /tmp \
-  --tmpfs /var/tmp \
   -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  --list
+  -e CF_Token="your-cloudflare-token" \
+  -e CF_Account_ID="your-account-id" \
+  -e DEPLOY_IDRAC_HOST="idrac.example.com" \
+  -e DEPLOY_IDRAC_USER="root" \
+  -e DEPLOY_IDRAC_PASS="password" \
+  nicat23/idracadm7:v1 \
+  --issue -d idrac.example.com --dns dns_cf --deploy-hook idrac.sh
 ```
 
-### Network Security
+### Manual Workflow with Individual Commands
+
 ```bash
-# Limit network access for offline operations
+# 1. Issue certificate using Cloudflare DNS
 docker run --rm \
-  --network none \
   -v "$(pwd)/acme.sh:/acme.sh" \
-  nicat23/idracadm7:v2 \
-  --list
+  -e CF_Token="your-cloudflare-token" \
+  -e CF_Account_ID="your-account-id" \
+  nicat23/idracadm7:v1 \
+  --issue -d idrac.example.com --dns dns_cf
+
+# 2. Deploy to iDRAC
+docker run --rm \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 \
+  racadm -r idrac.example.com -u root -p password \
+  sslcertupload -t 1 -f /acme.sh/idrac.example.com/fullchain.cer
+
+# 3. Upload private key
+docker run --rm \
+  -v "$(pwd)/acme.sh:/acme.sh" \
+  nicat23/idracadm7:v1 \
+  racadm -r idrac.example.com -u root -p password \
+  sslkeyupload -t 1 -f /acme.sh/idrac.example.com/idrac.example.com.key
+
+# 4. Reset iDRAC to apply new certificate
+docker run --rm \
+  nicat23/idracadm7:v1 \
+  racadm -r idrac.example.com -u root -p password racreset soft
 ```
 
-### Best Practices
-- **Credential Management**: Use Docker secrets or external secret management
-- **Network Isolation**: Deploy in isolated networks with minimal required access
-- **Resource Limits**: Always set memory and CPU constraints
-- **Log Monitoring**: Monitor container logs for security events
-- **Regular Updates**: Keep container images updated with latest security patches
+## Docker Compose Example
 
-## 📚 Advanced Usage
-
-### Custom Hooks and Scripts
-
-The container supports custom extensions in the following directories:
-- `/deploy/` - Custom deployment hooks
-- `/dnsapi/` - Custom DNS provider scripts  
-- `/notify/` - Custom notification hooks
-
-### Production Deployment with Monitoring
 ```yaml
 version: '3.8'
-
 services:
-  acme-daemon:
-    image: nicat23/idracadm7:v2
+  acme-sh:
+    image: nicat23/idracadm7:v1
     container_name: acme-daemon
-    restart: unless-stopped
     volumes:
-      - acme-data:/acme.sh
-      - acme-logs:/var/log/acme
+      - ./acme.sh:/acme.sh
     environment:
       - AUTO_UPGRADE=1
-      - LOG_LEVEL=2
-      - LOG_FILE=/var/log/acme/acme.sh.log
+      # Add your DNS provider credentials here
+      - CF_Token=your-cloudflare-token
     command: daemon
-    healthcheck:
-      test: ["CMD", "/acme.sh/acme.sh", "--version"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
-    mem_limit: 256m
-    cpus: 0.5
-
-  log-monitor:
-    image: fluent/fluent-bit:latest
-    volumes:
-      - acme-logs:/var/log/acme:ro
-    command: >
-      /fluent-bit/bin/fluent-bit
-      -i tail -p path=/var/log/acme/*.log
-      -o stdout
-    depends_on:
-      - acme-daemon
-
-volumes:
-  acme-data:
-  acme-logs:
+    restart: unless-stopped
 ```
 
-### Automated Renewal with Notifications
-```bash
-# Set up email notifications for renewals
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  -e MAIL_FROM="acme@example.com" \
-  -e MAIL_TO="admin@example.com" \
-  -e SMTP_SERVER="smtp.example.com" \
-  nicat23/idracadm7:v2 \
-  --set-notify --notify-hook mail
-```
+## Supported Platforms
 
-## 🐛 Troubleshooting
+- `linux/amd64`
+- `linux/arm64` (if built for multi-arch)
 
-### Common Issues
+## License
 
-#### Permission Problems
-```bash
-# Fix volume permissions
-sudo chown -R 1000:1000 ./acme.sh
-chmod -R 755 ./acme.sh
-```
+This Docker image is provided as-is. Please refer to the original [acme.sh license](https://github.com/acmesh-official/acme.sh/blob/master/LICENSE.md) for the underlying ACME client.
 
-#### SELinux Issues
-```bash
-# Set SELinux contexts
-sudo chcon -Rt svirt_sandbox_file_t ./acme.sh
-```
+## Contributing
 
-#### iDRAC Connectivity
-```bash
-# Test iDRAC connectivity
-docker run --rm nicat23/idracadm7:v2 \
-  racadm -r YOUR_IDRAC_IP -u root -p password \
-  getconfig -g cfgRacTuning
+Issues and pull requests are welcome. For major changes related to the core acme.sh functionality, please contribute to the [upstream project](https://github.com/acmesh-official/acme.sh).
 
-# Check certificate status
-docker run --rm nicat23/idracadm7:v2 \
-  racadm -r YOUR_IDRAC_IP -u root -p password \
-  sslcertview
-```
+## Support
 
-### Debug Mode
-```bash
-# Enable verbose logging
-docker run --rm -v "$(pwd)/acme.sh:/acme.sh" \
-  -e LOG_LEVEL=3 \
-  nicat23/idracadm7:v2 \
-  --issue -d example.com --dns dns_cf --debug 2
-```
+- For acme.sh specific issues: [acme.sh GitHub Issues](https://github.com/acmesh-official/acme.sh/issues)
+- For Dell iDRAC questions: Dell's official documentation
+- For Docker image issues: Open an issue in this repository
 
-### Health Checks
-```bash
-# Verify container functionality
-docker run --rm nicat23/idracadm7:v2 --version
-docker run --rm nicat23/idracadm7:v2 racadm -v
-```
+## Links
 
-## 📖 Documentation & Support
-
-### Resources
-- **ACME.sh Documentation**: [https://github.com/acmesh-official/acme.sh/wiki](https://github.com/acmesh-official/acme.sh/wiki)
-- **Dell iDRAC Documentation**: Official Dell documentation
-- **DNS Provider Setup**: [ACME.sh DNS API Guide](https://github.com/acmesh-official/acme.sh/wiki/dnsapi)
-
-### Getting Help
-- **Container Issues**: [Open an issue](https://github.com/nicat23/acme.sh-idracadm7/issues) in this repository
-- **ACME.sh Core Issues**: [ACME.sh GitHub Issues](https://github.com/acmesh-official/acme.sh/issues)
-- **Dell iDRAC Support**: Dell's official support channels
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for:
-- Bug fixes and improvements
-- Additional deploy hooks
-- Documentation enhancements
-- Feature requests
-
-## 📄 License & Attribution
-
-This project builds upon the excellent work of:
-- **ACME.sh**: [acmesh-official/acme.sh](https://github.com/acmesh-official/acme.sh) by Neil Pang and contributors
-- **iDRAC Deploy Hook**: Inspired by [societa-astronomica-g-v-schiaparelli/acme-idrac7](https://github.com/societa-astronomica-g-v-schiaparelli/acme-idrac7)
-- **Deployment Scripts**: Concepts from [kroy-the-rabbit/acme_idrac_deployment](https://github.com/kroy-the-rabbit/acme_idrac_deployment)
-
-This Docker image is provided as-is under the same license as the underlying ACME.sh project. Please refer to the [ACME.sh license](https://github.com/acmesh-official/acme.sh/blob/master/LICENSE.md) for details.
-
----
-
-## 🏷️ Version History
-
-### v2.0.0 (Current)
-- Enhanced security hardening
-- Improved iDRAC deploy hook with better error handling
-- Multi-architecture support (amd64/arm64)
-- Production-ready logging and monitoring
-- Streamlined configuration management
-- Comprehensive documentation
-
-### v1.x
-- Initial release with basic ACME.sh and iDRAC integration
-
----
-
-*Built with ❤️ for enterprise SSL automation*
+- [acme.sh Official Repository](https://github.com/acmesh-official/acme.sh)
+- [acme.sh Documentation](https://github.com/acmesh-official/acme.sh/wiki)
+- [Let's Encrypt](https://letsencrypt.org/)
+- [Dell iDRAC Documentation](https://www.dell.com/support/manuals/us/en/04/idrac9-lifecycle-controller-v3.30.30.30/idrac_3.30.30.30_ug/)
