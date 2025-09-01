@@ -1,0 +1,26 @@
+services:
+  acme-sh:
+    image: nicat23/idracadm7:v4
+    container_name: acme.sh
+    volumes:
+      - ./certs:/certs
+      - ./hooks:/hooks
+      - ./config:/acme.sh/config      
+    # volumes:
+    #   - acmecerts:/acme.sh
+#    network_mode: host
+    command: daemon
+    stdin_open: true
+    tty: true
+    restart: always
+    networks:
+      - proxy
+networks:
+  proxy:
+    external: true
+# volumes:
+#   acmecerts:
+#     driver_opts:
+#       type: "nfs"
+#       o: "${VOL_SERV_RW}"
+#       device: "${DEV}"

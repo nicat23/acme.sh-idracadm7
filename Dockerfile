@@ -151,6 +151,7 @@ RUN apk update && apk upgrade && \
     cronie \
     gcompat \
     libc6-compat \
+    sudo \
     libstdc++ && \
     # Clean up package cache and temporary files
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
@@ -166,9 +167,14 @@ ENV LE_WORKING_DIR=$LE_WORKING_DIR \
   AUTO_UPGRADE=$AUTO_UPGRADE
 
 # Create non-root user for better security
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup && \
-    chown -R appuser:appgroup /acme.sh /certs || true
+RUN addgroup -g 1000 -S appgroup && \
+    adduser -u 1000 -S appuser -G appgroup && \
+    mkdir -p /certs && \
+    chown -R appuser:appgroup /acme.sh /certs || true && \
+    # Configure sudo for racadm - restrict to specific commands only
+    echo 'appuser ALL=(ALL) NOPASSWD: /usr/bin/racadm' >> /etc/sudoers && \
+    echo 'appuser ALL=(ALL) NOPASSWD: /opt/dell/srvadmin/bin/idracadm7' >> /etc/sudoers && \
+    echo 'appuser ALL=(ALL) NOPASSWD: /usr/sbin/crond' >> /etc/sudoers
 
 VOLUME ["/certs", "${LE_WORKING_DIR}/config", "/hooks"]
 

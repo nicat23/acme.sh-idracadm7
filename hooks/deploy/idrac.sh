@@ -29,8 +29,8 @@ idrac_deploy() {
 	#/opt/dell/srvadmin/bin/idracadm7 -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" sslcertupload -t 1 -f $_cfullchain
 	#/opt/dell/srvadmin/bin/idracadm7 -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" racreset
 
-	racadm -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" sslkeyupload -t 1 -f "$_ckey"
-	racadm -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" sslcertupload -t 1 -f "$_cfullchain"
-	racadm -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" racreset
+	sudo racadm -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" sslkeyupload -t 1 -f "$_ckey"
+	sudo racadm -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" sslcertupload -t 1 -f "$_cfullchain"
+	sudo racadm -r "$Le_Deploy_idrac_host" -u "$Le_Deploy_idrac_user" -p "$Le_Deploy_idrac_pass" racreset
 
 }
