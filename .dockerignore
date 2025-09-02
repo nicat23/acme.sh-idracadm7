@@ -1,8 +1,5 @@
 dev/
 .gitignore
 Dockerfile
-hooks/
 .dockerignore
 docker-compose.yml
-mounted/
-certs/

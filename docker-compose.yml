@@ -5,10 +5,7 @@ services:
     volumes:
       - ./certs:/certs
       - ./hooks:/hooks
-      - ./config:/acme.sh/config      
-    # volumes:
-    #   - acmecerts:/acme.sh
-#    network_mode: host
+      - ./config:/config
     command: daemon
     stdin_open: true
     tty: true
@@ -18,9 +15,3 @@ services:
 networks:
   proxy:
     external: true
-# volumes:
-#   acmecerts:
-#     driver_opts:
-#       type: "nfs"
-#       o: "${VOL_SERV_RW}"
-#       device: "${DEV}"
