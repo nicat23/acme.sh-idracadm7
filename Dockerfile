@@ -49,7 +49,7 @@ RUN apk update && apk upgrade && \
     ; do \
     printf -- "%b"\
     "#!/usr/bin/env sh\n\
-    ${LE_WORKING_DIR}/acme.sh --${verb} --config-home ${LE_CONFIG_HOME} \"\$@\"\n\
+    ${LE_WORKING_DIR}/acme.sh --${verb} --config-home ${LE_CONFIG_HOME} \"$@\"\n \
     " >"/usr/local/bin/--${verb}" && \
     chmod +x "/usr/local/bin/--${verb}" \
     ; done && \
@@ -160,6 +160,7 @@ RUN apk update && apk upgrade && \
     libidn \
     jq \
     cronie \
+    logrotate \
     gcompat \
     libc6-compat \
     libstdc++ \
@@ -169,7 +170,19 @@ RUN apk update && apk upgrade && \
     # Remove unnecessary packages that might have been pulled as dependencies
     apk del --purge \
         $(apk info --installed | grep -E '^(pkgconf|build-base|gcc|musl-dev)' \
-        | cut -d' ' -f1) 2>/dev/null || true
+        | cut -d' ' -f1) 2>/dev/null || true && \
+    # Create logrotate config for acme.sh
+    echo '/config/acme.sh.log {\n\
+        daily\n\
+        rotate 7\n\
+        missingok\n\
+        notifempty\n\
+        compress\n\
+        delaycompress\n\
+        copytruncate\n\}' > /etc/logrotate.d/acme.sh && \
+        echo '#!/bin/sh' > /etc/periodic/daily/logrotate && \
+        echo '/usr/sbin/logrotate /etc/logrotate.conf' >> /etc/periodic/daily/logrotate && \
+        chmod a+x /etc/periodic/daily/logrotate
 ARG AUTO_UPGRADE=1 \
     LE_WORKING_DIR=/acme.sh \
     LE_CONFIG_HOME=/config \
