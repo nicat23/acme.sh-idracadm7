@@ -1,5 +1,5 @@
 # --- Stage 1: acme.sh build ---
-FROM alpine:3.22 AS acme
+FROM alpine:3.23 AS acme
 
 ARG AUTO_UPGRADE=1 \
     LE_WORKING_DIR=/acme.sh \
@@ -57,7 +57,7 @@ RUN apk update && apk upgrade && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/* /usr/share/man /usr/share/doc
 
 # --- Stage 2: Dell EMC racadm build ---
-FROM alpine:3.22 AS emc
+FROM alpine:3.23 AS emc
 
 # Update packages and install security updates
 RUN apk update && apk upgrade && \
@@ -127,7 +127,7 @@ RUN apk update && apk upgrade && \
     find /opt/dell -type d -empty -delete 2>/dev/null || true
 
 # --- Final Stage: Combine both environments ---
-FROM alpine:3.22
+FROM alpine:3.23
 
 RUN addgroup -g 1000 -S appgroup && \
     adduser -u 1000 -S appuser -G appgroup -s /bin/sh
