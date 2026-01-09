@@ -1,11 +1,13 @@
-FROM alpine:3.22
+FROM alpine:3.23
 
-RUN apk --no-cache add -f \
+RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+  apk update && apk upgrade --no-cache && \
+  apk add --no-cache curl@edge && \
+  apk add --no-cache \
   openssl \
   openssh-client \
   coreutils \
   bind-tools \
-  curl \
   sed \
   socat \
   tzdata \
