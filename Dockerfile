@@ -18,6 +18,7 @@ COPY ./notify /install_acme.sh/notify
 COPY ./init/ /init/
 COPY ./entry.sh /entry.sh
 
+
 # Update packages to latest versions and install security updates
 RUN apk update && apk upgrade && \
     apk --no-cache add -f \
@@ -145,13 +146,15 @@ COPY --from=emc  /usr/lib/libssl.so* /usr/lib/
 COPY --from=emc  /usr/lib64/libssl.so* /usr/lib64/
 
 # Install all required packages with latest versions and security updates
-RUN apk update && apk upgrade && \
-    apk --no-cache add \
+RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache \
+    curl@edge \
     openssl \
     openssh-client \
     coreutils \
     bind-tools \
-    curl \
     sed \
     socat \
     tzdata \
