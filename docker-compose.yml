@@ -1,6 +1,6 @@
 services:
   acme-sh:
-    image: nicat23/idracadm7:v4
+    image: nicat23/idracadm7:v5
     container_name: acme.sh
     volumes:
       - ./certs:/certs
