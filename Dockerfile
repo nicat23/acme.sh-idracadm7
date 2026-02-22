@@ -146,15 +146,13 @@ COPY --from=emc  /usr/lib/libssl.so* /usr/lib/
 COPY --from=emc  /usr/lib64/libssl.so* /usr/lib64/
 
 # Install all required packages with latest versions and security updates
-RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
-    apk update && \
-    apk upgrade --no-cache && \
-    apk add --no-cache \
-    curl@edge \
+RUN apk update && apk upgrade && \
+    apk --no-cache add \
     openssl \
     openssh-client \
     coreutils \
     bind-tools \
+    curl \
     sed \
     socat \
     tzdata \
