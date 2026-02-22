@@ -1,6 +1,7 @@
-FROM alpine:3.22
+FROM alpine:3.23
 
-RUN apk --no-cache add -f \
+RUN apk update && apk upgrade --no-cache && \
+  apk --no-cache add -f \
   openssl \
   openssh-client \
   coreutils \
