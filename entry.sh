@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 exec 2>&1
 if [ -d "$LE_CONFIG_HOME" ] && { [ ! -f "$LE_CONFIG_HOME/account.conf" ] || [ ! -f "$LE_CONFIG_HOME/http.header" ]; }; then
 	echo "account.conf or http.header missing in $LE_CONFIG_HOME. Running acme.sh \

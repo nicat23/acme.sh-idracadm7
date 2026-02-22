@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 # This script overlays custom scripts from /hooks into the acme.sh directories.
 # For this to work, you should have directories like /hooks/deploy, /hooks/dnsapi, etc.
 # containing your custom .sh files.

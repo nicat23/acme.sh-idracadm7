@@ -57,11 +57,13 @@ COPY --from=acme --chown=appuser:appgroup /acme.sh /acme.sh
 COPY --from=acme --chown=appuser:appgroup /acmebin /acmebin
 COPY --from=acme --chown=appuser:appgroup /usr/local/bin/acme.sh /usr/local/bin/acme.sh
 COPY --from=acme --chown=appuser:appgroup /usr/local/bin/--* /usr/local/bin/
-COPY --from=acme --chown=root:root /entry.sh /entry.sh
+#COPY --from=acme --chown=root:root /entry.sh /entry.sh
+
 # Copy racadm and dependencies
 COPY --from=emc  /opt/dell /opt/dell
 COPY --from=emc  /usr/bin/racadm /usr/bin/racadm
 # Install all required packages with latest versions and security updates
+COPY --chown=root:root ./entry.sh /entry.sh
 ARG AUTO_UPGRADE=1 \
     LE_WORKING_DIR=/acmebin \
     LE_CONFIG_HOME=/acme.sh \
@@ -92,6 +94,7 @@ RUN mkdir -p ${LE_CERT_HOME} ${LE_CONFIG_HOME} /hooks && \
     # Make entry script executable and owned by root for security
     chown root:root /entry.sh && \
     chmod 755 /entry.sh && \
+    chmod 755 /init/overlay.sh && \
     # Create a test to ensure racadm works
     # Test that sudo is configured correctly (without actually running racadm)
     sudo -u appuser sudo -l | grep -q racadm && echo "Sudo configuration verified" || echo "Sudo configuration failed"
