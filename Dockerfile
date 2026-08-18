@@ -3,7 +3,7 @@ FROM neilpang/acme.sh:latest AS acme
 # --- Stage 2: Dell EMC racadm build ---
 FROM nicat23/racadm:latest AS emc
 # --- Final Stage ---
-FROM alpine:3.23
+FROM alpine:3.23.5
 
 RUN addgroup -g 1000 -S appgroup && \
     adduser -u 1000 -S appuser -G appgroup -s /bin/sh && \
