@@ -5,7 +5,7 @@ services:
     volumes:
       - ./certs:/certs
       - ./hooks:/hooks
-      - ./config:/config
+      - ./config:/acme.sh
     command: daemon
     stdin_open: true
     tty: true

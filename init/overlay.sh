@@ -52,7 +52,7 @@ for NAME in $OVERLAY_TYPES; do
                     ;;
             esac
             if ln -sf "$SCRIPT" "$TARGET_FILE"; then
-                sudo chmod +x "$TARGET_FILE"
+                chmod +x "$TARGET_FILE"
                 echo "Linked $SCRIPT to $TARGET_FILE"
                 link_count=$((link_count + 1))
             else
