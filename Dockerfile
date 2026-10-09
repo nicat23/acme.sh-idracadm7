@@ -3,38 +3,55 @@ FROM neilpang/acme.sh:latest AS acme
 
 # --- Stage 2: Dell EMC racadm build ---
 FROM nicat23/racadm:latest AS emc
+# --- Final Stage ---
+FROM alpine:3.23
 
-# --- Final Stage (glibc, deterministic) ---
-FROM debian:bookworm-slim
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Create app user/group
-RUN groupadd -g 1000 appgroup && \
-    useradd -u 1000 -g appgroup -s /bin/sh -M appuser
-
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        openssl \
-        openssh-client \
-        coreutils \
-        dnsutils \
-        curl \
-        sed \
-        socat \
-        tzdata \
-        oathtool \
-        tar \
-        jq \
-        cron \
-        logrotate \
-        sudo \
-        dmidecode \
-        ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy init scripts
+RUN addgroup -g 1000 -S appgroup && \
+    adduser -u 1000 -S appuser -G appgroup -s /bin/sh && \
+    apk update --no-cache && apk upgrade --no-cache && \
+    apk --no-cache add \
+    openssl \
+    openssh-client \
+    coreutils \
+    bind-tools \
+    curl \
+    sed \
+    socat \
+    tzdata \
+    oath-toolkit-oathtool \
+    tar \
+    libidn \
+    jq \
+    cronie \
+    logrotate \
+    gcompat \
+    libc6-compat \
+    libstdc++ \
+    sudo && \
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/* && \
+    apk del --purge \
+        $(apk info --installed | grep -E '^(pkgconf|build-base|gcc|musl-dev)' \
+        | cut -d' ' -f1) 2>/dev/null || true && \
+    # Create logrotate config for acme.sh
+    printf "%b" "/config/acme.sh.log {\n\
+    daily\n\
+    rotate 7\n\
+    missingok\n\
+    notifempty\n\
+    compress\n\
+    delaycompress\n\
+    copytruncate\n\
+    }\n" > /etc/logrotate.d/acme.sh && \
+    printf "%b" "#!/bin/sh\n/usr/sbin/logrotate /etc/logrotate.conf\n" \
+    > /etc/periodic/daily/logrotate &&\
+    chmod a+x /etc/periodic/daily/logrotate && \
+    [ ! -e /usr/lib/libssl.so ] && { \
+    if [ -e /usr/lib/libssl.so.3 ]; then \
+    ln -s /usr/lib/libssl.so.3 /usr/lib/libssl.so; \
+    elif [ -e /usr/lib64/libssl.so.3 ]; then \
+    ln -s /usr/lib64/libssl.so.3 /usr/lib/libssl.so; \
+    fi; \
+    }
 COPY --chown=appuser:appgroup ./init /init
 
 # Copy acme.sh environment
